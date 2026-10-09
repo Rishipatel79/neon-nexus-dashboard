@@ -10,17 +10,17 @@ export const suppliers = [
  {id:'SUP-008',name:'Flowline Industrial',category:'Hydraulics',lead:6,reliability:98,price:1950},
 ];
 export type InventoryItem = {id:string;sku:string;name:string;category:string;location:string;quantity:number;demand:number;min:number;target:number;lead:number;price:number;supplier:string};
-const parts = [ ['BRG-6205','Deep groove ball bearing','Bearings'], ['ELC-1012','Industrial relay 24V','Electrical'], ['FST-M12','Hex bolt M12 × 50','Fasteners'], ['HYD-204','Hydraulic seal kit','Hydraulics'] ];
+const parts: [string,string,string][] = [ ['BRG-6205','Deep groove ball bearing','Bearings'], ['ELC-1012','Industrial relay 24V','Electrical'], ['FST-M12','Hex bolt M12 × 50','Fasteners'], ['HYD-204','Hydraulic seal kit','Hydraulics'] ];
 export const initialInventory:InventoryItem[] = locations.flatMap((location,l) => parts.map(([sku,name,category],p) => {
- const supplier = suppliers[p];
+ const supplier = suppliers[p] ?? {id:'SUP-001',lead:7,price:450};
  return {id:`INV-${l*4+p+1}`,sku,name,category,location,quantity:l===0?380+p*65:l===1?240+p*45:((l*17+p*29)%170)+20,demand:4+p*2,min:60,target:220,lead:supplier.lead,price:supplier.price,supplier:supplier.id};
 }));
-initialInventory[8].quantity=8; initialInventory[13].quantity=12; initialInventory[19].quantity=16; initialInventory[24].quantity=18;
+for(const [index,quantity] of [[8,8],[13,12],[19,16],[24,18]] as [number,number][]){const item=initialInventory[index];if(item)item.quantity=quantity;}
 export type PurchaseOrder = {id:string;sku:string;supplier:string;quantity:number;price:number;expected:string;created:string;status:string;location:string};
-export const initialOrders:PurchaseOrder[] = Array.from({length:12},(_,i) => ({id:`PO-${2026001+i}`,sku:parts[i%4][0],supplier:suppliers[i%8].id,quantity:60+i*10,price:suppliers[i%8].price,expected:`2026-10-${String(i<3?5+i:12+i).padStart(2,'0')}`,created:'2026-10-01',status:i<3?'Ordered':i<7?'Ordered':i<9?'Draft':i<11?'Received':'Cancelled',location:locations[2+i%6]}));
+export const initialOrders:PurchaseOrder[] = Array.from({length:12},(_,i) => ({id:`PO-${2026001+i}`,sku:parts[i%4]?.[0] ?? 'BRG-6205',supplier:suppliers[i%8]?.id ?? 'SUP-001',quantity:60+i*10,price:suppliers[i%8]?.price ?? 450,expected:`2026-10-${String(i<3?5+i:12+i).padStart(2,'0')}`,created:'2026-10-01',status:i<3?'Ordered':i<7?'Ordered':i<9?'Draft':i<11?'Received':'Cancelled',location:locations[2+i%6] ?? 'Mumbai Store'}));
 export type Transfer = {id:string;source:string;destination:string;sku:string;quantity:number;status:string};
 export function days(item:InventoryItem){return item.demand>0?item.quantity/item.demand:Infinity;}
-export function risk(item:InventoryItem){return days(item)<=3?'Critical':days(item)<=item.lead+3||item.quantity<item.min?'Low':'Healthy';}
+export function risk(item:InventoryItem){return item.demand<=0?'Healthy':days(item)<=item.lead?'Critical':days(item)<=item.lead+3||item.quantity<item.min?'Low':'Healthy';}
 export function priorities(items:InventoryItem[]){return items.filter(i=>risk(i)!=='Healthy').sort((a,b)=>days(a)-days(b));}
 export function incoming(item:InventoryItem,orders:PurchaseOrder[]){return orders.filter(o=>o.sku===item.sku&&o.location===item.location&&o.status==='Ordered').reduce((s,o)=>s+o.quantity,0);}
 export function replenish(item:InventoryItem,orders:PurchaseOrder[]){return Math.max(0,item.target-item.quantity-incoming(item,orders));}
@@ -28,4 +28,4 @@ export function transferSource(item:InventoryItem,items:InventoryItem[]){return 
 export function transferable(item:InventoryItem){return Math.max(0,Math.floor(item.quantity-Math.max(item.min,item.demand*item.lead)));}
 export function isOverdue(order:PurchaseOrder){return order.status==='Ordered'&&order.expected<new Date().toISOString().slice(0,10);}
 export function money(value:number){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(value);}
-export function exportCSV(name:string,rows:Record<string,unknown>[]){if(!rows.length)return;const keys=Object.keys(rows[0]);const escape=(v:unknown)=>`"${String(v??'').replaceAll('"','""')}"`;const csv=[keys.map(escape).join(','),...rows.map(r=>keys.map(k=>escape(r[k])).join(','))].join('\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));const a=document.createElement('a');a.href=url;a.download=`${name}.csv`;a.click();URL.revokeObjectURL(url);}
+export function exportCSV(name:string,rows:Record<string,unknown>[]){const first=rows[0];if(!first)return;const keys=Object.keys(first);const escape=(v:unknown)=>`"${String(v??'').replaceAll('"','""')}"`;const csv=[keys.map(escape).join(','),...rows.map(r=>keys.map(k=>escape(r[k])).join(','))].join('\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));const a=document.createElement('a');a.href=url;a.download=`${name}.csv`;a.click();URL.revokeObjectURL(url);}

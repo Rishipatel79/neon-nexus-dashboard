@@ -1,0 +1,18 @@
+import { createContext, useContext, useState, type ReactNode } from 'react';
+import { toast } from 'sonner';
+import { initialInventory, initialOrders, transferable, type InventoryItem, type PurchaseOrder, type Transfer } from '@/lib/procurement';
+type Activity = {text:string;time:string};
+type Store = {inventory:InventoryItem[]; orders:PurchaseOrder[]; transfers:Transfer[]; activity:Activity[]; updateQuantity:(id:string,q:number)=>void; saveOrder:(order:PurchaseOrder)=>void; orderStatus:(id:string,status:string)=>void; addTransfer:(t:Transfer)=>void; transferStatus:(id:string,status:string)=>void};
+const Context=createContext<Store|null>(null);
+export function ProcurementProvider({children}:{children:ReactNode}){
+ const [inventory,setInventory]=useState(initialInventory);const [orders,setOrders]=useState(initialOrders);const [transfers,setTransfers]=useState<Transfer[]>([]);
+ const [activity,setActivity]=useState<Activity[]>([{text:'PO-2026011 received from Precision Supply Co.',time:'18 minutes ago'},{text:'Stock levels reviewed across 8 locations',time:'42 minutes ago'},{text:'Supplier performance report updated',time:'1 hour ago'}]);
+ const log=(text:string)=>{setActivity(a=>[{text,time:'Just now'},...a].slice(0,12));toast.success(text);};
+ const updateQuantity=(id:string,q:number)=>{if(!Number.isInteger(q)||q<0){toast.error('Enter a valid non-negative whole quantity.');return;}setInventory(a=>a.map(i=>i.id===id?{...i,quantity:q}:i));log('Inventory quantity updated');};
+ const saveOrder=(order:PurchaseOrder)=>{if(!Number.isInteger(order.quantity)||order.quantity<1||order.price<=0||!order.expected){toast.error('Check the order quantity, price and delivery date.');return;}setOrders(a=>a.some(o=>o.id===order.id)?a.map(o=>o.id===order.id?order:o):[order,...a]);log(`${order.id} saved as a draft`);};
+ const orderStatus=(id:string,status:string)=>{const order=orders.find(o=>o.id===id);if(!order)return;const allowed=order.status==='Draft'?['Ordered','Rejected','Cancelled']:order.status==='Ordered'?['Received','Cancelled']:[];if(!allowed.includes(status)){toast.error('This order cannot be changed.');return;}if(status==='Received')setInventory(a=>a.map(i=>i.sku===order.sku&&i.location===order.location?{...i,quantity:i.quantity+order.quantity}:i));setOrders(a=>a.map(o=>o.id===id?{...o,status}:o));log(`${id} ${status==='Ordered'?'approved':status.toLowerCase()} · simulated`);};
+ const addTransfer=(t:Transfer)=>{const source=inventory.find(i=>i.sku===t.sku&&i.location===t.source);if(!source||!Number.isInteger(t.quantity)||t.quantity<1||t.quantity>transferable(source)){toast.error('Quantity exceeds safely transferable stock.');return;}setTransfers(a=>[t,...a]);log(`${t.id} transfer draft created`);};
+ const transferStatus=(id:string,status:string)=>{const t=transfers.find(x=>x.id===id);if(!t||t.status!=='Draft')return;if(status==='Approved'){const source=inventory.find(i=>i.sku===t.sku&&i.location===t.source);if(!source||t.quantity>transferable(source)){toast.error('Source no longer has enough surplus.');return;}setInventory(a=>a.map(i=>i.sku!==t.sku?i:i.location===t.source?{...i,quantity:i.quantity-t.quantity}:i.location===t.destination?{...i,quantity:i.quantity+t.quantity}:i));}setTransfers(a=>a.map(x=>x.id===id?{...x,status}:x));log(`${id} ${status.toLowerCase()} · simulated`);};
+ return <Context.Provider value={{inventory,orders,transfers,activity,updateQuantity,saveOrder,orderStatus,addTransfer,transferStatus}}>{children}</Context.Provider>;
+}
+export function useProcurement(){const value=useContext(Context);if(!value)throw new Error('Procurement provider missing');return value;}

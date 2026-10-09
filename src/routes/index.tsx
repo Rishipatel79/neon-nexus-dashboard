@@ -1,24 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
-
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
-export const Route = createFileRoute("/")({
-  component: Index,
-});
-
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
-}
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
+import { ArrowRight, ArrowUpRight, CalendarDays, Sparkles, Zap } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { PageHeading, Metrics, PriorityList, ActivityList, WorkspaceFooter } from '@/components/procure/shared';
+import { ItemDialog } from '@/components/procure/item-dialog';
+import type { InventoryItem } from '@/lib/procurement';
+import networkImage from '@/assets/procurement-network.jpg';
+export const Route=createFileRoute('/')({head:()=>({meta:[{title:'ProcurePilot AI — Your procurement workspace'},{name:'description',content:'Your intelligent procurement workspace. Monitor inventory, review priorities and make faster purchasing decisions with fictional demo data.'},{property:'og:title',content:'ProcurePilot AI — Your procurement workspace'},{property:'og:description',content:'Smarter procurement. Faster decisions. A neon-powered procurement intelligence workspace.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary_large_image'}]}),component:Workspace});
+function Workspace(){const [item,setItem]=useState<InventoryItem|null>(null);return <><PageHeading title="Your workspace, at a glance." description="Everything you need to keep your supply chain a step ahead."><span className="date-label flex items-center gap-2 text-xs text-muted-foreground"><CalendarDays size={14}/>{new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span></PageHeading><section className="welcome-scene"><img src={networkImage} width={1536} height={1024} alt="Connected glass logistics hubs with an illuminated neon procurement core"/><div className="welcome-copy"><div className="eyebrow"><span className="status-dot"/> WORKSPACE ACTIVE <span className="text-muted-foreground ml-2">/ 08 LOCATIONS</span></div><h2>ProcurePilot AI<br/>Your next move.<br/><span>Already in sight.</span></h2><p>Less chasing spreadsheets. More moving forward.<br/>Your inventory, suppliers, and decisions — connected.</p><div className="flex items-center gap-4"><Button size="lg" className="neon-button px-5 h-11" asChild><Link to="/overview">Go to overview <ArrowRight size={16}/></Link></Button><Button variant="ghost" size="sm" asChild><Link to="/copilot"><Sparkles size={14}/>Ask Copilot <ArrowUpRight size={13}/></Link></Button></div></div><span className="scene-caption"><Zap size={10} className="text-primary"/> CONNECTED INTELLIGENCE · DEMO NETWORK</span></section><div className="section-title"><div><h2>Business pulse</h2><p>A live snapshot of your demo operations.</p></div><span className="text-[10px] text-muted-foreground flex items-center gap-2"><span className="status-dot"/>Updated just now</span></div><Metrics/><div className="dashboard-columns"><section><PriorityList onInvestigate={setItem}/></section><section><ActivityList/></section></div><WorkspaceFooter/><ItemDialog item={item} onClose={()=>setItem(null)}/></>;}
